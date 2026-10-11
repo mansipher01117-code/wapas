@@ -1,0 +1,16 @@
+# backend
+backend/.venv/
+backend/.env
+backend/storage/
+backend/wapas.db*
+__pycache__/
+*.pyc
+# frontend
+frontend/node_modules/
+frontend/.next/
+frontend/next-env.d.ts
+frontend/*.tsbuildinfo
+# local test videos
+*.mp4
+*.mov
+frontend/AGENTS.md
