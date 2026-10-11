@@ -1,0 +1,43 @@
+{
+  "_note": "SAMPLE rates in INR for the demo. Before your pitch, replace these with real quotes from 3-4 local painters, plumbers and carpenters, and update source_note.",
+  "source_note": "Sample rate card (replace with local quotes)",
+  "severity_multiplier": { "minor": 0.6, "moderate": 1.0, "major": 1.6 },
+  "worsened_share": 0.5,
+  "rates": {
+    "wall:crack": [800, 1800],
+    "wall:stain": [500, 1200],
+    "wall:seepage": [1500, 4000],
+    "wall:paint_peel": [600, 1500],
+    "ceiling:stain": [600, 1500],
+    "ceiling:seepage": [1500, 4000],
+    "ceiling:crack": [900, 2200],
+    "floor:scratch": [300, 900],
+    "floor:crack": [1200, 3000],
+    "floor:stain": [300, 800],
+    "tile:crack": [400, 1200],
+    "tile:broken": [500, 1400],
+    "tap:not_working": [250, 700],
+    "tap:broken": [400, 1000],
+    "tap:missing": [400, 1000],
+    "switchboard:broken": [200, 600],
+    "switchboard:not_working": [200, 600],
+    "door:broken": [600, 2000],
+    "door:scratch": [300, 800],
+    "window:broken": [600, 2500],
+    "furniture:broken": [500, 2500],
+    "furniture:scratch": [300, 1000],
+    "furniture:missing": [1000, 4000],
+    "appliance:not_working": [500, 3000],
+    "appliance:broken": [800, 4000],
+    "fixture:broken": [300, 1200],
+    "fixture:stain": [200, 600]
+  },
+  "by_type": {
+    "dirty": [300, 800],
+    "stain": [300, 900],
+    "scratch": [300, 900],
+    "missing": [500, 2000],
+    "not_working": [300, 1500]
+  },
+  "default": [300, 1000]
+}
