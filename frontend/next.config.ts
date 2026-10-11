@@ -7,7 +7,7 @@ const BACKEND = process.env.BACKEND_URL || "http://127.0.0.1:8000";
 const nextConfig: NextConfig = {
   // Dev is served on 0.0.0.0 so a phone on the same Wi-Fi can open it. Next blocks
   // its dev resources (HMR, hydration) for hosts it doesn't know, so allow the LAN.
-  allowedDevOrigins: ["127.0.0.1", "localhost", "192.168.0.0/16", "10.0.0.0/8", "172.16.0.0/12"],
+  allowedDevOrigins: ["127.0.0.1", "192.168.*.*", "10.*.*.*", "172.*.*.*"],
 
   async rewrites() {
     return [
