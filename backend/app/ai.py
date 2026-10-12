@@ -130,7 +130,6 @@ def detect_issues(room_name: str, inspection_type: str, frames: list[dict], segm
             system_instruction=DETECT_PROMPT,
             response_mime_type="application/json",
             response_schema=AIRoom,
-            temperature=0.2,
         ),
     )
     parsed = AIRoom.model_validate_json(resp.text)
@@ -160,7 +159,6 @@ def compare_room(room_name: str, move_in: list[dict], move_out: list[dict]) -> l
             system_instruction=COMPARE_PROMPT,
             response_mime_type="application/json",
             response_schema=AICompare,
-            temperature=0.1,
         ),
     )
     return [v.model_dump() for v in AICompare.model_validate_json(resp.text).verdicts]

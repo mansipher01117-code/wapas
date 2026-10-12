@@ -53,7 +53,7 @@ Without keys the app runs in **demo mode**: the whole flow works, but issues are
 
 ```env
 GEMINI_API_KEY=your_key      # https://aistudio.google.com/apikey
-GEMINI_MODEL=gemini-2.5-flash # any Gemini Flash model your key can use
+GEMINI_MODEL=gemini-3.8-flash # any Gemini Flash model your key can use
 GROQ_API_KEY=your_key        # https://console.groq.com/keys  (Hinglish voice notes)
 ```
 

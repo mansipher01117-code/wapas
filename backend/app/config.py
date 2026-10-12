@@ -12,7 +12,7 @@ DB_PATH = Path(os.getenv("DB_PATH", BASE_DIR / "wapas.db")).resolve()
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "whisper-large-v3").strip()
 
