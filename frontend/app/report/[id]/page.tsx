@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Stamp } from "@/components/Stamp";
-import { api, CAPTURE_META, clock, fmtDate, inr, inrRange, label, VERDICT_META, type Comparison, type Inspection } from "@/lib/api";
+import { api, CAPTURE_META, clock, fmtDate, inr, inrRange, label, SETTLEMENT_NOTE, VERDICT_META, type Comparison, type Inspection } from "@/lib/api";
 
 type Full = Comparison & { move_in_id: string; move_out_id: string };
 
@@ -128,6 +128,7 @@ export default function ReportPage() {
               </tr>
             </tbody>
           </table>
+          <p className="small muted">{SETTLEMENT_NOTE}</p>
 
           <h2>Findings</h2>
           <table>
@@ -219,7 +220,6 @@ export default function ReportPage() {
 
           <p className="small muted" style={{ marginTop: 22 }}>
             Repair costs: {c.rate_card_note}. Issues were detected by AI from the videos and reviewed by the tenant.
-            Wapas organises evidence and is not legal advice.
           </p>
         </div>
       </article>

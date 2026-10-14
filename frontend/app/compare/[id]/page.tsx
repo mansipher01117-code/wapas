@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Stamp } from "@/components/Stamp";
 import { Topbar } from "@/components/Topbar";
-import { api, clock, fmtDate, inr, inrRange, label, VERDICT_META, type CompareItem, type Comparison } from "@/lib/api";
+import { api, clock, fmtDate, inr, inrRange, label, SETTLEMENT_NOTE, VERDICT_META, type CompareItem, type Comparison } from "@/lib/api";
 
 const TILT = [-8, 6, -5, 9, -11, 4, -7, 8];
 
@@ -178,7 +178,10 @@ export default function ComparePage() {
                   <span className="small">You should get back</span>
                   <span className="num">{inrRange(backLo, backHi)}</span>
                 </div>
-                <p className="small" style={{ marginTop: 14 }}>
+                <p className="small muted" style={{ marginTop: 14 }}>
+                  {SETTLEMENT_NOTE}
+                </p>
+                <p className="small">
                   {c.move_in.lock_type === "mutual" && so
                     ? `Move-in record signed by ${so.signer_name} on ${fmtDate(c.move_in.locked_at)}.`
                     : c.move_in.lock_type === "tenant_only"
