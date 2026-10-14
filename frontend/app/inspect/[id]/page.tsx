@@ -8,6 +8,7 @@ import { Stamp } from "@/components/Stamp";
 import { Topbar } from "@/components/Topbar";
 import {
   api,
+  CAPTURE_META,
   clock,
   fmtDate,
   ISSUE_TYPES,
@@ -16,6 +17,7 @@ import {
   ROOM_PRESETS,
   SEVERITIES,
   uploadFile,
+  type CaptureSource,
   type Inspection,
   type Issue,
   type Property,
@@ -67,7 +69,7 @@ function Recorder({
 }: {
   roomName: string;
   type: "move_in" | "move_out";
-  onFile: (f: File) => void;
+  onFile: (f: File, source: CaptureSource) => void;
   upload: number | null;
 }) {
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -86,9 +88,9 @@ function Recorder({
     );
   }
 
-  const pick = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const pick = (source: CaptureSource) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
-    if (f) onFile(f);
+    if (f) onFile(f, source);
     e.target.value = "";
   };
 
@@ -104,7 +106,7 @@ function Recorder({
         e.preventDefault();
         setOver(false);
         const f = e.dataTransfer.files?.[0];
-        if (f) onFile(f);
+        if (f) onFile(f, "file");
       }}
     >
       <span className="drop__icon" aria-hidden="true" />
@@ -128,8 +130,8 @@ function Recorder({
         </button>
       </div>
       <span className="small muted">You can also drop a video file here.</span>
-      <input ref={cameraRef} type="file" accept="video/*" capture="environment" hidden onChange={pick} />
-      <input ref={fileRef} type="file" accept="video/*" hidden onChange={pick} />
+      <input ref={cameraRef} type="file" accept="video/*" capture="environment" hidden onChange={pick("camera")} />
+      <input ref={fileRef} type="file" accept="video/*" hidden onChange={pick("file")} />
     </div>
   );
 }
@@ -258,6 +260,9 @@ function RoomReport({
           {clock(room.duration)} video. Fingerprint <span className="hash">{room.sha256.slice(0, 16)}…</span>
         </span>
         <span className="row" style={{ gap: 8 }}>
+          <span className="badge" title={CAPTURE_META[room.capture_source].note}>
+            {CAPTURE_META[room.capture_source].badge}
+          </span>
           {room.ai_mode === "demo" ? <span className="badge">sample issues</span> : <span className="badge badge--violet">AI checked</span>}
           {!locked ? (
             <button className="linkbtn" onClick={onRerecord}>
@@ -531,11 +536,12 @@ export default function InspectPage() {
   const isOut = insp.type === "move_out";
   const p = insp.property;
 
-  async function onFile(f: File) {
+  async function onFile(f: File, source: CaptureSource) {
     setError("");
     setUpload({ name: active, pct: 0 });
     const form = new FormData();
     form.append("name", active);
+    form.append("capture_source", source);
     form.append("file", f);
     try {
       await uploadFile(`/api/inspections/${id}/rooms`, form, (pct) => setUpload({ name: active, pct }));

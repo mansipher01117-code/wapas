@@ -19,6 +19,8 @@ export interface Issue {
   frame_url: string | null;
 }
 
+export type CaptureSource = "camera" | "file";
+
 export interface Room {
   id: string;
   name: string;
@@ -29,6 +31,7 @@ export interface Room {
   duration: number;
   sha256: string;
   video_bytes: number;
+  capture_source: CaptureSource;
   created_at: string;
   video_url: string | null;
   poster_url: string | null;
@@ -210,6 +213,11 @@ export const label = (s: string) => s.replace(/_/g, " ");
 export const ITEMS = ["wall", "floor", "ceiling", "door", "window", "tile", "tap", "switchboard", "furniture", "appliance", "fixture", "other"];
 export const ISSUE_TYPES = ["crack", "stain", "seepage", "broken", "missing", "scratch", "dirty", "not_working", "paint_peel", "other"];
 export const SEVERITIES: Severity[] = ["minor", "moderate", "major"];
+
+export const CAPTURE_META: Record<CaptureSource, { badge: string; note: string }> = {
+  camera: { badge: "Recorded live", note: "Shot in the Wapas camera on this device, not picked from the gallery." },
+  file: { badge: "Uploaded file", note: "Picked from the device, so it could have been shot or edited earlier." },
+};
 
 export const ROOM_PRESETS = ["Bedroom", "Bathroom", "Kitchen", "Hall", "Balcony"];
 

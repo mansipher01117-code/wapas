@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Stamp } from "@/components/Stamp";
-import { api, clock, fmtDate, inr, inrRange, label, VERDICT_META, type Comparison, type Inspection } from "@/lib/api";
+import { api, CAPTURE_META, clock, fmtDate, inr, inrRange, label, VERDICT_META, type Comparison, type Inspection } from "@/lib/api";
 
 type Full = Comparison & { move_in_id: string; move_out_id: string };
 
@@ -186,14 +186,16 @@ export default function ReportPage() {
 
           <h2>Video fingerprints</h2>
           <p className="small">
-            Each video was fingerprinted with SHA-256 the moment it was uploaded. Anyone can check that a video is
-            unedited at {origin}/verify.
+            Each video was fingerprinted with SHA-256 the moment it was uploaded. Anyone can check at {origin}/verify
+            that a copy of a video is byte-for-byte the file listed here. “Recorded live” means the video came straight
+            from the camera in the app rather than the device gallery; it is not proof that the footage is unedited.
           </p>
           <table>
             <thead>
               <tr>
                 <th>Record</th>
                 <th>Room</th>
+                <th>How it was captured</th>
                 <th>Uploaded</th>
                 <th>SHA-256</th>
               </tr>
@@ -204,6 +206,7 @@ export default function ReportPage() {
                   <tr key={r.id}>
                     <td>{rec!.type === "move_in" ? "Move-in" : "Move-out"}</td>
                     <td>{r.name}</td>
+                    <td>{CAPTURE_META[r.capture_source].badge}</td>
                     <td>{fmtDate(r.created_at, true)}</td>
                     <td className="hash" style={{ fontSize: 13 }}>
                       {r.sha256}
