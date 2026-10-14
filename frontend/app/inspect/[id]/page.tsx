@@ -54,9 +54,11 @@ function Processing({ room }: { room: Room }) {
           );
         })}
       </ul>
-      <p className="small muted" style={{ marginTop: 16, marginBottom: 0 }}>
-        Fingerprint <span className="hash">{room.sha256.slice(0, 24)}…</span>
-      </p>
+      {room.sha256 ? (
+        <p className="small muted" style={{ marginTop: 16, marginBottom: 0 }}>
+          Fingerprint <span className="hash">{room.sha256.slice(0, 24)}…</span>
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -246,18 +248,28 @@ function RoomReport({
 
   return (
     <div className="stack" style={{ gap: 20 }}>
-      <video
-        ref={videoRef}
-        className="video"
-        src={room.video_url ?? undefined}
-        poster={room.poster_url ?? undefined}
-        controls
-        playsInline
-        preload="metadata"
-      />
+      {room.video_url ? (
+        <video
+          ref={videoRef}
+          className="video"
+          src={room.video_url}
+          poster={room.poster_url ?? undefined}
+          controls
+          playsInline
+          preload="metadata"
+        />
+      ) : (
+        <div className="photo__empty">Sample, no video</div>
+      )}
       <div className="spread small">
         <span>
-          {clock(room.duration)} video. Fingerprint <span className="hash">{room.sha256.slice(0, 16)}…</span>
+          {room.sha256 ? (
+            <>
+              {clock(room.duration)} video. Fingerprint <span className="hash">{room.sha256.slice(0, 16)}…</span>
+            </>
+          ) : (
+            "Sample room, nothing was recorded"
+          )}
         </span>
         <span className="row" style={{ gap: 8 }}>
           <span className="badge" title={CAPTURE_META[room.capture_source].note}>

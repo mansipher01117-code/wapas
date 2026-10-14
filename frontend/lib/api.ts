@@ -29,7 +29,7 @@ export interface Room {
   error: string | null;
   ai_mode: "live" | "demo" | null;
   duration: number;
-  sha256: string;
+  sha256: string | null;
   video_bytes: number;
   capture_source: CaptureSource;
   created_at: string;
@@ -77,6 +77,7 @@ export interface Property {
   deposit: number;
   landlord_name: string;
   landlord_phone: string;
+  is_sample: boolean;
   created_at: string;
   move_in: InspectionSummary | null;
   move_out: InspectionSummary | null;
@@ -109,6 +110,15 @@ export interface Comparison {
   rate_card_note: string;
   property: Property;
   move_in: { id: string; locked_at: string | null; lock_type: string | null; signoff: Signoff | null; created_at: string };
+}
+
+/** What POST /api/demo/sample returns. */
+export interface SampleCase {
+  property_id: string;
+  move_in_id: string;
+  move_out_id: string;
+  comparison_id: string;
+  created: boolean;
 }
 
 export interface Health {

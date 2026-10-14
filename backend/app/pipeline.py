@@ -132,8 +132,12 @@ def run_comparison(comparison_id: str) -> None:
     if not cmp:
         return
     try:
+        prop = db.one("select is_sample from properties where id = ?", cmp["property_id"])
+        # Sample data never goes to the AI: the rule matcher reaches the same verdicts for free.
+        is_sample = bool(prop and prop["is_sample"])
+        live = config.AI_LIVE and not is_sample
         db.update("comparisons", comparison_id, {"status": "processing", "error": None,
-                                                 "ai_mode": "live" if config.AI_LIVE else "demo"})
+                                                 "ai_mode": "live" if live else "demo"})
         in_rooms = {_norm(r["name"]): r for r in db.many(
             "select * from rooms where inspection_id = ? and status = 'ready'", cmp["move_in_id"])}
         out_rooms = db.many(
@@ -150,13 +154,13 @@ def run_comparison(comparison_id: str) -> None:
                 continue
 
             raw: list[dict] = []
-            if config.AI_LIVE:
+            if live:
                 try:
                     raw = ai.compare_room(out_room["name"], move_in, move_out)
                 except Exception as e:
                     log.warning("AI compare failed for %s, using rule matcher: %s", out_room["name"], e)
-            else:
-                time.sleep(0.6)
+            elif not is_sample:
+                time.sleep(0.6)  # demo mode only: lets the UI show the checklist
             verdicts = _validate(raw, move_in, move_out)
 
             out_by_id = {o["id"]: o for o in move_out}

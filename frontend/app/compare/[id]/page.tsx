@@ -126,6 +126,11 @@ export default function ComparePage() {
           <p className="muted" style={{ marginTop: 10 }}>
             {p.address}, {p.city}. Move-out checked against the move-in record of {fmtDate(c.move_in.created_at)}.
           </p>
+          {p.is_sample ? (
+            <p style={{ marginTop: 10 }}>
+              <span className="badge">Sample data</span>
+            </p>
+          ) : null}
 
           {c.status === "failed" ? <p className="error">{c.error}</p> : null}
 
