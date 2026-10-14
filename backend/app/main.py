@@ -17,6 +17,9 @@ from .prompts import ISSUE_TYPES, ITEMS, SEVERITIES
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
+# How the video reached us: shot in the app's camera, or picked from the gallery.
+CAPTURE_SOURCES = ("camera", "file")
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     db.init_db()
@@ -57,6 +60,7 @@ def room_out(r: dict, with_issues: bool = True) -> dict:
         "id": r["id"], "name": r["name"], "status": r["status"], "step": r["step"], "error": r["error"],
         "ai_mode": r["ai_mode"], "duration": r["duration"], "sha256": r["video_sha256"],
         "video_bytes": r["video_bytes"], "created_at": r["created_at"],
+        "capture_source": r["capture_source"] or "file",
         "video_url": media_url(r["video_path"]),
         "poster_url": media_url(frames[0]["path"]) if frames else None,
         "frames": [{"ts": f["ts"], "url": media_url(f["path"])} for f in frames],
@@ -189,10 +193,13 @@ def get_inspection(iid: str):
 
 
 @app.post("/api/inspections/{iid}/rooms")
-async def upload_room(iid: str, background: BackgroundTasks, name: str = Form(...), file: UploadFile = File(...)):
+async def upload_room(iid: str, background: BackgroundTasks, name: str = Form(...),
+                      capture_source: str = Form("file"), file: UploadFile = File(...)):
     insp = must(db.one("select * from inspections where id = ?", iid), "Inspection")
     assert_unlocked(insp)
     name = " ".join(name.split())[:40] or "Room"
+    if capture_source not in CAPTURE_SOURCES:
+        raise HTTPException(422, f"capture_source must be one of: {', '.join(CAPTURE_SOURCES)}")
 
     # Re-recording a room replaces the old take.
     old = db.one("select * from rooms where inspection_id = ? and lower(name) = lower(?)", iid, name)
@@ -223,7 +230,7 @@ async def upload_room(iid: str, background: BackgroundTasks, name: str = Form(..
         "id": room_id, "inspection_id": iid, "name": name, "video_path": str(video),
         "video_sha256": h.hexdigest(), "video_bytes": size, "duration": 0, "status": "queued",
         "step": "hashed", "error": None, "ai_mode": None, "transcript": None, "frames": None,
-        "created_at": db.now(),
+        "capture_source": capture_source, "created_at": db.now(),
     })
     background.add_task(pipeline.process_room, room_id)
     return room_out(db.one("select * from rooms where id = ?", room_id))

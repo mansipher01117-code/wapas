@@ -41,6 +41,7 @@ create table if not exists rooms (
   ai_mode text,
   transcript text,
   frames text,
+  capture_source text default 'file',
   created_at text
 );
 create table if not exists issues (
@@ -101,6 +102,18 @@ create index if not exists idx_cmp_items on comparison_items(comparison_id);
 """
 
 
+# Columns added after the first release. The deployed database already has rows, so
+# "create table if not exists" never sees them: add them here instead.
+MIGRATIONS = [("rooms", "capture_source", "text default 'file'")]
+
+
+def migrate(c) -> None:
+    for table, col, decl in MIGRATIONS:
+        have = {r["name"] for r in c.execute(f"pragma table_info({table})")}
+        if col not in have:
+            c.execute(f"alter table {table} add column {col} {decl}")
+
+
 def now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
@@ -125,6 +138,7 @@ def init_db() -> None:
     with conn() as c:
         c.execute("pragma journal_mode = wal")
         c.executescript(SCHEMA)
+        migrate(c)
         # Anything left mid-processing from a previous run can be retried from the UI.
         c.execute(
             "update rooms set status='failed', error='Server restarted while processing. Tap retry.' "
