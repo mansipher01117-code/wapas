@@ -112,6 +112,25 @@ export interface Comparison {
   move_in: { id: string; locked_at: string | null; lock_type: string | null; signoff: Signoff | null; created_at: string };
 }
 
+/** One evidence report: a comparison plus the ids of the two records behind it. */
+export interface Report extends Comparison {
+  move_in_id: string;
+  move_out_id: string;
+}
+
+/** What POST /api/comparisons/{id}/share returns. */
+export interface ShareLink {
+  token: string;
+  expires_at: string | null;
+  created_at: string;
+}
+
+/** GET /api/shared/{token}: the same report, read-only, with the records it lists. */
+export interface SharedReport extends Report {
+  records: Inspection[];
+  share: { created_at: string; expires_at: string | null };
+}
+
 /** What POST /api/demo/sample returns. */
 export interface SampleCase {
   property_id: string;

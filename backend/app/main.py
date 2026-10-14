@@ -438,6 +438,66 @@ def get_comparison(cid: str):
     }
 
 
+# ---------- shared read-only report ----------
+SHARE_DAYS = 30
+SHARE_GONE = "This link is invalid or has expired."
+
+
+def share_out(sh: dict) -> dict:
+    return {"token": sh["share_token"], "expires_at": sh["expires_at"], "created_at": sh["created_at"]}
+
+
+def active_share(cid: str) -> dict | None:
+    return db.one(
+        "select * from shares where comparison_id = ? and revoked = 0 "
+        "and (expires_at is null or expires_at > ?) order by created_at desc limit 1",
+        cid, db.now(),
+    )
+
+
+def _no_tokens(value):
+    """A shared report must never carry a sign-off token: that link can still be signed."""
+    if isinstance(value, dict):
+        return {k: _no_tokens(v) for k, v in value.items() if k != "token"}
+    if isinstance(value, list):
+        return [_no_tokens(v) for v in value]
+    return value
+
+
+@app.post("/api/comparisons/{cid}/share")
+def share_report(cid: str):
+    must(db.one("select * from comparisons where id = ?", cid), "Comparison")
+    live = active_share(cid)
+    if live:
+        return share_out(live)
+    sh = db.insert("shares", {"id": db.new_id(), "comparison_id": cid,
+                              "share_token": secrets.token_urlsafe(32), "expires_at": db.later(SHARE_DAYS),
+                              "revoked": 0, "created_at": db.now()})
+    return share_out(sh)
+
+
+@app.post("/api/comparisons/{cid}/share/revoke")
+def revoke_report_share(cid: str):
+    must(db.one("select * from comparisons where id = ?", cid), "Comparison")
+    db.run("update shares set revoked = 1 where comparison_id = ?", cid)
+    return {"ok": True}
+
+
+@app.get("/api/shared/{token}")
+def shared_report(token: str):
+    """Read-only copy of one evidence report. Unknown, revoked and expired tokens answer the same."""
+    sh = db.one("select * from shares where share_token = ?", token)
+    if not sh or sh["revoked"] or (sh["expires_at"] and sh["expires_at"] <= db.now()):
+        raise HTTPException(404, SHARE_GONE)
+    if not db.one("select id from comparisons where id = ?", sh["comparison_id"]):
+        raise HTTPException(404, SHARE_GONE)
+    report = get_comparison(sh["comparison_id"])
+    records = [inspection_out(db.one("select * from inspections where id = ?", report[k]))
+               for k in ("move_in_id", "move_out_id")]
+    return _no_tokens({**report, "records": records,
+                       "share": {"created_at": sh["created_at"], "expires_at": sh["expires_at"]}})
+
+
 # ---------- sample data ----------
 @app.post("/api/demo/sample")
 def load_sample():
