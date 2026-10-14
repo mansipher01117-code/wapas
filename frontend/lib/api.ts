@@ -214,6 +214,17 @@ export const ITEMS = ["wall", "floor", "ceiling", "door", "window", "tile", "tap
 export const ISSUE_TYPES = ["crack", "stain", "seepage", "broken", "missing", "scratch", "dirty", "not_working", "paint_peel", "other"];
 export const SEVERITIES: Severity[] = ["minor", "moderate", "major"];
 
+// Shown under every settlement figure, so the wording is identical everywhere.
+export const SETTLEMENT_NOTE =
+  "Normal wear and tear (light scuffs, faded paint) is not charged. Wapas organises evidence and is not legal advice.";
+
+export const SOURCE_META: Record<Issue["source"], string> = {
+  vision: "Camera",
+  voice: "Voice",
+  both: "Voice + Camera",
+  tenant: "Added by you",
+};
+
 export const CAPTURE_META: Record<CaptureSource, { badge: string; note: string }> = {
   camera: { badge: "Recorded live", note: "Shot in the Wapas camera on this device, not picked from the gallery." },
   file: { badge: "Uploaded file", note: "Picked from the device, so it could have been shot or edited earlier." },

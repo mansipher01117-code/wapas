@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { api, clock, ISSUE_TYPES, ITEMS, label, SEVERITIES, type Issue } from "@/lib/api";
+import { api, clock, ISSUE_TYPES, ITEMS, label, SEVERITIES, SOURCE_META, type Issue } from "@/lib/api";
 
 export function IssueTag({
   issue,
@@ -55,7 +55,8 @@ export function IssueTag({
     }
   }
 
-  const heard = issue.source === "voice" || issue.source === "both";
+  // Older rows can carry no source at all, so an unknown value simply shows no badge.
+  const sourceLabel = issue.source ? SOURCE_META[issue.source] : undefined;
 
   return (
     <article className={`tag ${editing ? "tag--editing" : ""}`}>
@@ -117,8 +118,12 @@ export function IssueTag({
             {issue.user_edited ? <span className="badge badge--violet">edited by you</span> : null}
           </div>
           <div className="tag__title">{issue.description}</div>
-          {issue.voice_quote ? <div className="tag__quote">“{issue.voice_quote}”</div> : null}
-          {heard && !issue.voice_quote ? <div className="small muted">Picked up from your voice note</div> : null}
+          {sourceLabel || issue.voice_quote ? (
+            <div className="row tag__source">
+              {sourceLabel ? <span className="badge">{sourceLabel}</span> : null}
+              {issue.voice_quote ? <span className="tag__quote">“{issue.voice_quote}”</span> : null}
+            </div>
+          ) : null}
           {error ? <p className="error small">{error}</p> : null}
           {!locked ? (
             <div className="tag__actions">

@@ -1348,6 +1348,16 @@ p {
   font-weight: 500;
 }
 
+/* Source badge and voice quote share a line, and wrap on narrow phones. */
+.tag__source {
+  gap: 8px;
+}
+
+.tag__source .tag__quote {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .tag__actions {
   display: flex;
   gap: 14px;
