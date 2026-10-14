@@ -5,7 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Brand } from "@/components/Topbar";
 import { IssueTag } from "@/components/IssueTag";
 import { Stamp } from "@/components/Stamp";
-import { api, clock, fmtDate, inr, type Inspection, type Signoff } from "@/lib/api";
+import { Missing } from "@/components/Missing";
+import { api, clock, fmtDate, inr, isGone, signerName, type Inspection, type Signoff } from "@/lib/api";
 
 interface SignView {
   signoff: Signoff;
@@ -16,6 +17,7 @@ interface SignView {
 export default function SignPage() {
   const { token } = useParams<{ token: string }>();
   const [data, setData] = useState<SignView | null>(null);
+  const [loadFailed, setLoadFailed] = useState<{ gone: boolean } | null>(null);
   const [error, setError] = useState("");
   const [name, setName] = useState("");
   const [disputing, setDisputing] = useState(false);
@@ -29,7 +31,7 @@ export default function SignPage() {
         setData(d);
         setName((n) => n || d.property.landlord_name || "");
       })
-      .catch((e) => setError(e.message));
+      .catch((e) => setLoadFailed({ gone: isGone(e) }));
   }, [token]);
 
   useEffect(load, [load]);
@@ -52,9 +54,18 @@ export default function SignPage() {
   }
 
   if (!data) {
+    if (loadFailed) {
+      return (
+        <Missing
+          gone={loadFailed.gone}
+          sample={false}
+          title={loadFailed.gone ? "This sign-off link no longer works" : undefined}
+        />
+      );
+    }
     return (
       <main className="wrap">
-        {error ? <p className="error" style={{ marginTop: 40 }}>{error}</p> : <p className="loading">Opening the report…</p>}
+        <p className="loading">Opening the report…</p>
       </main>
     );
   }
@@ -135,7 +146,7 @@ export default function SignPage() {
                     <>
                       <Stamp main="Agreed" sub={s.signer_name ?? ""} tone="violet" seal rotate={-10} slam={justSigned} size="lg" />
                       <p className="lede" style={{ margin: 0 }}>
-                        Signed by {s.signer_name} on {fmtDate(s.signed_at, true)}. {p.tenant_name} sees it on their Wapas page,
+                        Signed by {signerName(s.signer_name)} on {fmtDate(s.signed_at, true)}. {p.tenant_name} sees it on their Wapas page,
                         and this record can no longer be changed.
                       </p>
                     </>

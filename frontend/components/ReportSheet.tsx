@@ -10,6 +10,7 @@ import {
   inrRange,
   label,
   SETTLEMENT_NOTE,
+  signerName,
   VERDICT_META,
   type Inspection,
   type Report,
@@ -51,7 +52,7 @@ export function ReportSheet({ c, records, shared = false }: { c: Report; records
           ) : null}
         </div>
         {c.move_in.lock_type === "mutual" ? (
-          <Stamp main="Signed" sub={`move-in, ${so?.signer_name ?? ""}`} tone="violet" rotate={-8} />
+          <Stamp main="Signed" sub={`move-in, ${signerName(so?.signer_name)}`} tone="violet" rotate={-8} />
         ) : null}
       </div>
 
@@ -80,7 +81,7 @@ export function ReportSheet({ c, records, shared = false }: { c: Report; records
                 {fmtDate(c.move_in.created_at, true)}
                 <br />
                 {c.move_in.lock_type === "mutual"
-                  ? `Agreed by ${so?.signer_name} on ${fmtDate(c.move_in.locked_at, true)}`
+                  ? `Agreed by ${signerName(so?.signer_name)} on ${fmtDate(c.move_in.locked_at, true)}`
                   : c.move_in.lock_type === "tenant_only"
                     ? `Locked by tenant on ${fmtDate(c.move_in.locked_at, true)}`
                     : "Not signed"}

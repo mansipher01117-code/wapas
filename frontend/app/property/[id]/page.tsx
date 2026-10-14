@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { Missing } from "@/components/Missing";
 import { Stamp } from "@/components/Stamp";
 import { Topbar } from "@/components/Topbar";
-import { api, fmtDate, inr, inrRange, type InspectionSummary, type Property } from "@/lib/api";
+import { api, fmtDate, inr, inrRange, isGone, signerName, type InspectionSummary, type Property } from "@/lib/api";
 
 function roomsLine(i: InspectionSummary | null) {
   if (!i || i.room_count === 0) return "No rooms recorded yet.";
@@ -17,14 +18,18 @@ export default function PropertyPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [p, setP] = useState<Property | null>(null);
+  const [loadFailed, setLoadFailed] = useState<{ gone: boolean } | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const load = useCallback(() => {
     api<Property>(`/api/properties/${id}`)
-      .then(setP)
-      .catch((e) => setError(e.message));
+      .then((data) => {
+        setP(data);
+        setLoadFailed(null);
+      })
+      .catch((e) => setLoadFailed({ gone: isGone(e) }));
   }, [id]);
 
   useEffect(load, [load]);
@@ -62,7 +67,13 @@ export default function PropertyPage() {
     return (
       <>
         <Topbar />
-        <main className="wrap">{error ? <p className="error">{error}</p> : <p className="loading">Opening folder…</p>}</main>
+        {loadFailed ? (
+          <Missing gone={loadFailed.gone} title={loadFailed.gone ? "This folder is gone" : undefined} />
+        ) : (
+          <main className="wrap">
+            <p className="loading">Opening folder…</p>
+          </main>
+        )}
       </>
     );
   }
@@ -131,7 +142,7 @@ export default function PropertyPage() {
                 <div className="sheet__head">
                   <h3>Landlord sign-off</h3>
                   {signed && mi?.lock_type === "mutual" ? (
-                    <Stamp main="Agreed" sub={so?.signer_name ?? undefined} tone="violet" size="sm" rotate={-6} />
+                    <Stamp main="Agreed" sub={signerName(so?.signer_name)} tone="violet" size="sm" rotate={-6} />
                   ) : null}
                   {signed && mi?.lock_type === "tenant_only" ? (
                     <Stamp main="Locked" sub="by tenant" tone="violet" size="sm" rotate={-6} />
@@ -140,13 +151,13 @@ export default function PropertyPage() {
                 {signed ? (
                   <p>
                     {mi?.lock_type === "mutual"
-                      ? `${so?.signer_name} agreed to the move-in condition on ${fmtDate(mi?.locked_at, true)}. The record can no longer be edited.`
+                      ? `${signerName(so?.signer_name)} agreed to the move-in condition on ${fmtDate(mi?.locked_at, true)}. The record can no longer be edited.`
                       : `You locked this record on ${fmtDate(mi?.locked_at, true)} without the landlord's reply. The timestamps still stand.`}
                   </p>
                 ) : so?.decision === "dispute" ? (
                   <>
                     <p>
-                      <b>{so.signer_name}</b> disagreed: “{so.note}”
+                      <b>{signerName(so.signer_name)}</b> disagreed: “{so.note}”
                     </p>
                     <Link className="btn btn--small btn--primary" href={`/inspect/${mi?.id}`}>
                       Fix the record and resend

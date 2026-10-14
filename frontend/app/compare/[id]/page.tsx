@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { Missing } from "@/components/Missing";
 import { Stamp } from "@/components/Stamp";
 import { Topbar } from "@/components/Topbar";
-import { api, clock, fmtDate, inr, inrRange, label, SETTLEMENT_NOTE, VERDICT_META, type CompareItem, type Comparison } from "@/lib/api";
+import { api, clock, fmtDate, inr, inrRange, isGone, label, SETTLEMENT_NOTE, signerName, VERDICT_META, type CompareItem, type Comparison } from "@/lib/api";
 
 const TILT = [-8, 6, -5, 9, -11, 4, -7, 8];
 
@@ -74,12 +75,15 @@ function VerdictCard({ item, index }: { item: CompareItem; index: number }) {
 export default function ComparePage() {
   const { id } = useParams<{ id: string }>();
   const [c, setC] = useState<Comparison | null>(null);
-  const [error, setError] = useState("");
+  const [loadFailed, setLoadFailed] = useState<{ gone: boolean } | null>(null);
 
   const load = useCallback(() => {
     api<Comparison>(`/api/comparisons/${id}`)
-      .then(setC)
-      .catch((e) => setError(e.message));
+      .then((data) => {
+        setC(data);
+        setLoadFailed(null);
+      })
+      .catch((e) => setLoadFailed({ gone: isGone(e) }));
   }, [id]);
 
   useEffect(load, [load]);
@@ -95,7 +99,13 @@ export default function ComparePage() {
     return (
       <>
         <Topbar />
-        <main className="wrap">{error ? <p className="error">{error}</p> : <p className="loading">Opening verdict…</p>}</main>
+        {loadFailed ? (
+          <Missing gone={loadFailed.gone} />
+        ) : (
+          <main className="wrap">
+            <p className="loading">Opening verdict…</p>
+          </main>
+        )}
       </>
     );
   }
@@ -132,7 +142,17 @@ export default function ComparePage() {
             </p>
           ) : null}
 
-          {c.status === "failed" ? <p className="error">{c.error}</p> : null}
+          {c.status === "failed" ? (
+            <div className="sheet" style={{ marginTop: 24, maxWidth: 620 }}>
+              <h3 style={{ marginBottom: 10 }}>The comparison didn&apos;t finish</h3>
+              <p className="small">
+                Nothing was lost: both records are still on file. Open the folder and run the comparison again.
+              </p>
+              <Link href={`/property/${c.property_id}`} className="btn btn--small btn--primary">
+                Back to the folder
+              </Link>
+            </div>
+          ) : null}
 
           {pending ? (
             <div className="sheet" style={{ marginTop: 28, maxWidth: 640 }}>
@@ -188,7 +208,7 @@ export default function ComparePage() {
                 </p>
                 <p className="small">
                   {c.move_in.lock_type === "mutual" && so
-                    ? `Move-in record signed by ${so.signer_name} on ${fmtDate(c.move_in.locked_at)}.`
+                    ? `Move-in record signed by ${signerName(so.signer_name)} on ${fmtDate(c.move_in.locked_at)}.`
                     : c.move_in.lock_type === "tenant_only"
                       ? `Move-in record locked by the tenant on ${fmtDate(c.move_in.locked_at)}.`
                       : "The move-in record was never signed, so the landlord may question it."}

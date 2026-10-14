@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Missing } from "@/components/Missing";
 import { ReportSheet } from "@/components/ReportSheet";
-import { api, fmtDate, type Inspection, type Report, type ShareLink } from "@/lib/api";
+import { api, fmtDate, isGone, type Inspection, type Report, type ShareLink } from "@/lib/api";
 
 function ShareBox({ cid }: { cid: string }) {
   const [link, setLink] = useState<ShareLink | null>(null);
@@ -87,7 +88,7 @@ export default function ReportPage() {
   const { id } = useParams<{ id: string }>();
   const [c, setC] = useState<Report | null>(null);
   const [records, setRecords] = useState<Inspection[]>([]);
-  const [error, setError] = useState("");
+  const [loadFailed, setLoadFailed] = useState<{ gone: boolean } | null>(null);
 
   useEffect(() => {
     api<Report>(`/api/comparisons/${id}`)
@@ -99,11 +100,17 @@ export default function ReportPage() {
         ]);
         setRecords(ins);
       })
-      .catch((e) => setError(e.message));
+      .catch((e) => setLoadFailed({ gone: isGone(e) }));
   }, [id]);
 
   if (!c) {
-    return <main className="wrap">{error ? <p className="error">{error}</p> : <p className="loading">Preparing report…</p>}</main>;
+    return loadFailed ? (
+      <Missing gone={loadFailed.gone} title={loadFailed.gone ? "This report is gone" : undefined} />
+    ) : (
+      <main className="wrap">
+        <p className="loading">Preparing report…</p>
+      </main>
+    );
   }
 
   return (

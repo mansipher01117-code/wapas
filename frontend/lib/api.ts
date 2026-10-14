@@ -160,6 +160,27 @@ export interface VerifyResult {
   signoff?: Signoff | null;
 }
 
+/** Thrown by api(): keeps the status so a page can tell "record gone" from "server asleep". */
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
+export const isGone = (e: unknown) => e instanceof ApiError && e.status === 404;
+
+// The free backend plan sleeps when idle. A request that fails, or drags on past 4s,
+// means it is probably waking up: ServerStatus listens for this and shows the banner.
+export const BACKEND_WAKING = "wapas:backend-waking";
+const SLOW_MS = 4000;
+
+function waking(): void {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(BACKEND_WAKING));
+}
+
 async function errorMessage(res: Response): Promise<string> {
   try {
     const body = await res.json();
@@ -179,14 +200,28 @@ export const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "
 
 export async function api<T>(path: string, init?: RequestInit & { json?: unknown }): Promise<T> {
   const { json, ...rest } = init ?? {};
-  const res = await fetch(API_BASE + path, {
-    ...rest,
-    headers: json !== undefined ? { "content-type": "application/json" } : rest.headers,
-    body: json !== undefined ? JSON.stringify(json) : rest.body,
-    cache: "no-store",
-  });
-  if (!res.ok) throw new Error(await errorMessage(res));
-  return res.json() as Promise<T>;
+  const slow = typeof window !== "undefined" ? window.setTimeout(waking, SLOW_MS) : undefined;
+  try {
+    const res = await fetch(API_BASE + path, {
+      ...rest,
+      headers: json !== undefined ? { "content-type": "application/json" } : rest.headers,
+      body: json !== undefined ? JSON.stringify(json) : rest.body,
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      if (res.status >= 500) waking();
+      throw new ApiError(await errorMessage(res), res.status);
+    }
+    return (await res.json()) as T;
+  } catch (e) {
+    if (e instanceof TypeError) {
+      waking(); // never reached the server at all
+      throw new ApiError("The Wapas server isn't responding. Check that the backend is running on port 8000.", 0);
+    }
+    throw e;
+  } finally {
+    clearTimeout(slow);
+  }
 }
 
 /** Upload with progress (fetch can't report upload progress). */
@@ -210,7 +245,10 @@ export function uploadFile<T>(path: string, form: FormData, onProgress?: (pct: n
         reject(new Error(typeof d === "string" ? d : `Upload failed (${xhr.status})`));
       }
     };
-    xhr.onerror = () => reject(new Error("Upload failed. Check your connection and that the backend is running."));
+    xhr.onerror = () => {
+      waking();
+      reject(new Error("Upload failed. Check your connection and that the backend is running."));
+    };
     xhr.send(form);
   });
 }
@@ -238,6 +276,9 @@ export function clock(sec: number): string {
 }
 
 export const label = (s: string) => s.replace(/_/g, " ");
+
+/** A signer's name, or a plain stand-in, so a missing name never reads as "null". */
+export const signerName = (n?: string | null) => (n && n.trim()) || "the landlord";
 
 export const ITEMS = ["wall", "floor", "ceiling", "door", "window", "tile", "tap", "switchboard", "furniture", "appliance", "fixture", "other"];
 export const ISSUE_TYPES = ["crack", "stain", "seepage", "broken", "missing", "scratch", "dirty", "not_working", "paint_peel", "other"];

@@ -1,35 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { LoadSampleButton } from "@/components/Missing";
 import { Topbar } from "@/components/Topbar";
-import { api, inr, type Property, type SampleCase } from "@/lib/api";
+import { api, inr, type Property } from "@/lib/api";
 import { caseProgress } from "@/lib/progress";
 
 export default function Dashboard() {
-  const router = useRouter();
   const [items, setItems] = useState<Property[] | null>(null);
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setFailed(false);
     api<Property[]>("/api/properties")
       .then(setItems)
-      .catch((e) => setError(e.message));
+      .catch(() => setFailed(true));
   }, []);
 
-  async function loadSample() {
-    setBusy(true);
-    setError("");
-    try {
-      const s = await api<SampleCase>("/api/demo/sample", { method: "POST" });
-      router.push(`/compare/${s.comparison_id}`);
-    } catch (e) {
-      setError((e as Error).message);
-      setBusy(false);
-    }
-  }
+  useEffect(load, [load]);
 
   return (
     <>
@@ -45,19 +34,34 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="row">
-              {items?.length ? (
-                <button className="linkbtn" onClick={loadSample} disabled={busy}>
-                  {busy ? "Loading sample…" : "Load sample inspection"}
-                </button>
-              ) : null}
+              {items?.length ? <LoadSampleButton className="linkbtn" /> : null}
               <Link href="/property/new" className="btn btn--primary">
                 Add a place
               </Link>
             </div>
           </div>
 
-          {error ? <p className="error" style={{ marginTop: 24 }}>{error}</p> : null}
-          {!items && !error ? <p className="loading">Opening your folders…</p> : null}
+          <p className="small muted" style={{ marginTop: 6 }}>
+            Demo version: data may reset when the server restarts.
+          </p>
+
+          {!items && !failed ? <p className="loading">Opening your folders…</p> : null}
+
+          {failed ? (
+            <div className="sheet" style={{ marginTop: 24, maxWidth: 620 }}>
+              <h3 style={{ marginBottom: 10 }}>Can&apos;t reach the server</h3>
+              <p className="small">
+                Your folders live on the server, and the free plan takes up to a minute to wake up. Give it a few
+                seconds, then try again.
+              </p>
+              <div className="row">
+                <button className="btn btn--primary btn--small" onClick={load}>
+                  Try again
+                </button>
+                <LoadSampleButton className="btn btn--small" />
+              </div>
+            </div>
+          ) : null}
 
           {items && items.length === 0 ? (
             <div className="sheet" style={{ marginTop: 24, maxWidth: 620 }}>
@@ -66,9 +70,7 @@ export default function Dashboard() {
                 Add the place you rent, or load a sample case to see how the move-out verdict and the evidence report
                 read. Sample data is marked everywhere and never counts as evidence.
               </p>
-              <button className="btn btn--primary btn--block" onClick={loadSample} disabled={busy}>
-                {busy ? "Loading sample…" : "Load sample inspection"}
-              </button>
+              <LoadSampleButton className="btn btn--primary btn--block" />
             </div>
           ) : null}
 
