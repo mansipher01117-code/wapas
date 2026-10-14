@@ -61,6 +61,11 @@ export default function ReportPage() {
             <p style={{ margin: "8px 0 0" }}>
               Report {c.id}, generated {fmtDate(new Date().toISOString(), true)}
             </p>
+            {p.is_sample ? (
+              <p style={{ margin: "10px 0 0" }}>
+                <span className="badge">Sample data</span> This is a sample report, not real evidence.
+              </p>
+            ) : null}
           </div>
           {c.move_in.lock_type === "mutual" ? (
             <Stamp main="Signed" sub={`move-in, ${so?.signer_name ?? ""}`} tone="violet" rotate={-8} />
@@ -210,7 +215,7 @@ export default function ReportPage() {
                     <td>{CAPTURE_META[r.capture_source].badge}</td>
                     <td>{fmtDate(r.created_at, true)}</td>
                     <td className="hash" style={{ fontSize: 13 }}>
-                      {r.sha256}
+                      {r.sha256 ?? <span className="muted">Sample, no video</span>}
                     </td>
                   </tr>
                 )),

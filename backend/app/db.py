@@ -17,6 +17,7 @@ create table if not exists properties (
   deposit integer default 0,
   landlord_name text,
   landlord_phone text,
+  is_sample integer default 0,
   created_at text
 );
 create table if not exists inspections (
@@ -104,7 +105,10 @@ create index if not exists idx_cmp_items on comparison_items(comparison_id);
 
 # Columns added after the first release. The deployed database already has rows, so
 # "create table if not exists" never sees them: add them here instead.
-MIGRATIONS = [("rooms", "capture_source", "text default 'file'")]
+MIGRATIONS = [
+    ("rooms", "capture_source", "text default 'file'"),
+    ("properties", "is_sample", "integer default 0"),
+]
 
 
 def migrate(c) -> None:

@@ -1,20 +1,35 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Topbar } from "@/components/Topbar";
-import { api, inr, type Property } from "@/lib/api";
+import { api, inr, type Property, type SampleCase } from "@/lib/api";
 import { caseProgress } from "@/lib/progress";
 
 export default function Dashboard() {
+  const router = useRouter();
   const [items, setItems] = useState<Property[] | null>(null);
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     api<Property[]>("/api/properties")
       .then(setItems)
       .catch((e) => setError(e.message));
   }, []);
+
+  async function loadSample() {
+    setBusy(true);
+    setError("");
+    try {
+      const s = await api<SampleCase>("/api/demo/sample", { method: "POST" });
+      router.push(`/compare/${s.comparison_id}`);
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+    }
+  }
 
   return (
     <>
@@ -29,13 +44,33 @@ export default function Dashboard() {
                 move-out verdict.
               </p>
             </div>
-            <Link href="/property/new" className="btn btn--primary">
-              Add a place
-            </Link>
+            <div className="row">
+              {items?.length ? (
+                <button className="linkbtn" onClick={loadSample} disabled={busy}>
+                  {busy ? "Loading sample…" : "Load sample inspection"}
+                </button>
+              ) : null}
+              <Link href="/property/new" className="btn btn--primary">
+                Add a place
+              </Link>
+            </div>
           </div>
 
           {error ? <p className="error" style={{ marginTop: 24 }}>{error}</p> : null}
           {!items && !error ? <p className="loading">Opening your folders…</p> : null}
+
+          {items && items.length === 0 ? (
+            <div className="sheet" style={{ marginTop: 24, maxWidth: 620 }}>
+              <h3 style={{ marginBottom: 10 }}>No folders yet</h3>
+              <p className="small">
+                Add the place you rent, or load a sample case to see how the move-out verdict and the evidence report
+                read. Sample data is marked everywhere and never counts as evidence.
+              </p>
+              <button className="btn btn--primary btn--block" onClick={loadSample} disabled={busy}>
+                {busy ? "Loading sample…" : "Load sample inspection"}
+              </button>
+            </div>
+          ) : null}
 
           {items ? (
             <div className="folders">
@@ -45,6 +80,7 @@ export default function Dashboard() {
                   <Link key={p.id} href={`/property/${p.id}`} className="folder">
                     <span className="folder__tab">{p.city}</span>
                     <div className="folder__addr">{p.address}</div>
+                    {p.is_sample ? <span className="badge">Sample data</span> : null}
                     <div className="row small" style={{ gap: 18 }}>
                       <span>
                         Deposit <b className="num">{inr(p.deposit)}</b>

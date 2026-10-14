@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import config, db, pipeline, ratecard
+from . import config, db, pipeline, ratecard, sample
 from .prompts import ISSUE_TYPES, ITEMS, SEVERITIES
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -110,7 +110,7 @@ def inspection_out(insp: dict, full: bool = True) -> dict:
 def property_out(p: dict, full: bool = False) -> dict:
     insps = db.many("select * from inspections where property_id = ? order by created_at", p["id"])
     cmp = db.one("select * from comparisons where property_id = ? order by created_at desc limit 1", p["id"])
-    out = {**p, "move_in": None, "move_out": None,
+    out = {**p, "is_sample": bool(p["is_sample"]), "move_in": None, "move_out": None,
            "comparison": {k: cmp[k] for k in ("id", "status", "fair_min", "fair_max", "created_at")} if cmp else None}
     for i in insps:
         out[i["type"]] = inspection_out(i, full=False)
@@ -240,7 +240,8 @@ async def upload_room(iid: str, background: BackgroundTasks, name: str = Form(..
 def delete_room(rid: str):
     room = must(db.one("select * from rooms where id = ?", rid), "Room")
     assert_unlocked(db.one("select * from inspections where id = ?", room["inspection_id"]))
-    shutil.rmtree(Path(room["video_path"]).parent, ignore_errors=True)
+    if room["video_path"]:
+        shutil.rmtree(Path(room["video_path"]).parent, ignore_errors=True)
     db.run("delete from rooms where id = ?", rid)
     return {"ok": True}
 
@@ -430,11 +431,18 @@ def get_comparison(cid: str):
 
     return {
         **cmp, "items": items, "rate_card_note": ratecard.source_note(),
-        "property": p,
+        "property": property_out(p),
         "move_in": {"id": mi["id"], "locked_at": mi["locked_at"], "lock_type": mi["lock_type"],
                     "signoff": latest_signoff(mi["id"]), "created_at": mi["created_at"]},
         "counts": {v: sum(1 for i in items if i["verdict"] == v) for v in pipeline.VERDICTS},
     }
+
+
+# ---------- sample data ----------
+@app.post("/api/demo/sample")
+def load_sample():
+    """Fills an empty deployment with one clearly-marked sample case. Safe to call twice."""
+    return sample.load()
 
 
 # ---------- verify ----------

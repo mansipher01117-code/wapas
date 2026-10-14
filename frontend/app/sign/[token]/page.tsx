@@ -110,7 +110,11 @@ export default function SignPage() {
                       {clock(r.duration)} video, recorded {fmtDate(r.created_at, true)}
                     </span>
                   </div>
-                  <video className="video" src={r.video_url ?? undefined} poster={r.poster_url ?? undefined} controls playsInline preload="metadata" />
+                  {r.video_url ? (
+                    <video className="video" src={r.video_url} poster={r.poster_url ?? undefined} controls playsInline preload="metadata" />
+                  ) : (
+                    <div className="photo__empty">Sample, no video</div>
+                  )}
                   {r.issues.length ? (
                     <div className="tags" style={{ marginTop: 18 }}>
                       {r.issues.map((i) => (
