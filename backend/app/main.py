@@ -3,12 +3,14 @@ import hashlib
 import logging
 import secrets
 import shutil
+import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal
 
-from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -16,12 +18,20 @@ from . import config, db, pipeline, ratecard, sample
 from .prompts import ISSUE_TYPES, ITEMS, SEVERITIES
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+log = logging.getLogger("wapas.api")
 
 # How the video reached us: shot in the app's camera, or picked from the gallery.
 CAPTURE_SOURCES = ("camera", "file")
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    config.ensure_dirs()
+    log.info("Data dir: %s (writable: %s, DATA_DIR set: %s)",
+             config.DATA_DIR, config.writable(config.DATA_DIR), config.DATA_DIR_SET)
+    stale = config.stale_local_data()
+    if stale:
+        log.warning("DATA_DIR points elsewhere, so older data still sitting in backend/ is not in use: %s. "
+                    "Nothing was moved or deleted: copy it across yourself if you need it.", ", ".join(stale))
     db.init_db()
     yield
 
@@ -126,7 +136,9 @@ def assert_unlocked(insp: dict) -> None:
 @app.get("/api/health")
 def health():
     return {"ok": True, "ai_live": config.AI_LIVE, "whisper": bool(config.GROQ_API_KEY),
-            "model": config.GEMINI_MODEL if config.AI_LIVE else "demo"}
+            "model": config.GEMINI_MODEL if config.AI_LIVE else "demo",
+            "storage": {"data_dir_configured": config.DATA_DIR_SET,
+                        "writable": config.writable(config.DATA_DIR)}}
 
 
 # ---------- properties ----------
@@ -143,7 +155,8 @@ class PropertyIn(BaseModel):
 @app.post("/api/properties")
 def create_property(body: PropertyIn):
     p = db.insert("properties", {"id": db.new_id(), **body.model_dump(), "created_at": db.now()})
-    return property_out(p)
+    # Read it back so the response carries the columns with database defaults, like is_sample.
+    return property_out(db.one("select * from properties where id = ?", p["id"]))
 
 
 @app.get("/api/properties")
@@ -503,6 +516,26 @@ def shared_report(token: str):
 def load_sample():
     """Fills an empty deployment with one clearly-marked sample case. Safe to call twice."""
     return sample.load()
+
+
+# ---------- admin ----------
+@app.get("/api/admin/backup")
+def admin_backup(background: BackgroundTasks, x_admin_token: str = Header(default="")):
+    """Download a snapshot of the database. Off unless ADMIN_TOKEN is set. Never sends videos or .env."""
+    if not config.ADMIN_TOKEN:
+        raise HTTPException(404, "Not found")
+    if not secrets.compare_digest(x_admin_token.encode(), config.ADMIN_TOKEN.encode()):
+        raise HTTPException(403, "Bad admin token.")
+
+    folder = Path(tempfile.mkdtemp(prefix="wapas-backup-"))
+    out = folder / f"wapas-{db.now()[:10]}.db"
+    try:
+        db.snapshot(out)
+    except Exception:
+        shutil.rmtree(folder, ignore_errors=True)
+        raise
+    background.add_task(shutil.rmtree, folder, ignore_errors=True)
+    return FileResponse(out, media_type="application/octet-stream", filename=out.name)
 
 
 # ---------- verify ----------

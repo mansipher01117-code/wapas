@@ -168,6 +168,17 @@ def init_db() -> None:
         )
 
 
+def snapshot(dest) -> None:
+    """Consistent copy of the database through SQLite's backup API: safe while the app is running,
+    and it holds only the database, never videos or settings."""
+    with conn() as c:
+        out = sqlite3.connect(dest)
+        try:
+            c.backup(out)
+        finally:
+            out.close()
+
+
 def row(r: sqlite3.Row | None) -> dict | None:
     return dict(r) if r else None
 
