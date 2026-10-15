@@ -3,7 +3,7 @@ import json
 import sqlite3
 import uuid
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from .config import DB_PATH
 
@@ -95,11 +95,20 @@ create table if not exists comparison_items (
   cost_min integer default 0,
   cost_max integer default 0
 );
+create table if not exists shares (
+  id text primary key,
+  comparison_id text references comparisons(id) on delete cascade,
+  share_token text unique not null,
+  expires_at text,
+  revoked integer default 0,
+  created_at text
+);
 create index if not exists idx_insp_prop on inspections(property_id);
 create index if not exists idx_rooms_insp on rooms(inspection_id);
 create index if not exists idx_issues_room on issues(room_id);
 create index if not exists idx_rooms_sha on rooms(video_sha256);
 create index if not exists idx_cmp_items on comparison_items(comparison_id);
+create index if not exists idx_shares_cmp on shares(comparison_id);
 """
 
 
@@ -120,6 +129,11 @@ def migrate(c) -> None:
 
 def now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def later(days: int) -> str:
+    """Same shape as now(), so a deadline can be compared as a plain string."""
+    return (datetime.now(timezone.utc) + timedelta(days=days)).isoformat(timespec="seconds")
 
 
 def new_id() -> str:

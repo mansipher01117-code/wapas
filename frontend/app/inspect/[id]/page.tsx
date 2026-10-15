@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { IssueTag } from "@/components/IssueTag";
+import { Missing } from "@/components/Missing";
 import { Stamp } from "@/components/Stamp";
 import { Topbar } from "@/components/Topbar";
 import {
@@ -11,11 +12,13 @@ import {
   CAPTURE_META,
   clock,
   fmtDate,
+  isGone,
   ISSUE_TYPES,
   ITEMS,
   label,
   ROOM_PRESETS,
   SEVERITIES,
+  signerName,
   uploadFile,
   type CaptureSource,
   type Inspection,
@@ -383,7 +386,7 @@ function SharePanel({ insp, property, onUpdate }: { insp: Inspection; property?:
         <div style={{ display: "grid", justifyItems: "center", padding: "6px 0 14px" }}>
           <Stamp
             main={mutual ? "Agreed" : "Locked"}
-            sub={mutual ? so?.signer_name ?? "" : "by tenant"}
+            sub={mutual ? signerName(so?.signer_name) : "by tenant"}
             tone="violet"
             seal
             rotate={-10}
@@ -391,7 +394,7 @@ function SharePanel({ insp, property, onUpdate }: { insp: Inspection; property?:
         </div>
         <p style={{ marginBottom: 0 }}>
           {mutual
-            ? `${so?.signer_name} signed the move-in condition on ${fmtDate(insp.locked_at, true)}. This record is now final.`
+            ? `${signerName(so?.signer_name)} signed the move-in condition on ${fmtDate(insp.locked_at, true)}. This record is now final.`
             : `Locked by you on ${fmtDate(insp.locked_at, true)}. The landlord didn't reply, but the timestamps and fingerprints still hold.`}
         </p>
       </div>
@@ -408,7 +411,7 @@ function SharePanel({ insp, property, onUpdate }: { insp: Inspection; property?:
       <h3 style={{ marginBottom: 10 }}>Landlord sign-off</h3>
       {so?.decision === "dispute" ? (
         <div className="error" style={{ marginBottom: 12 }}>
-          {so.signer_name} disagreed: “{so.note}”. Fix the issues, then send a new link.
+          {signerName(so.signer_name)} disagreed: “{so.note}”. Fix the issues, then send a new link.
         </div>
       ) : null}
 
@@ -464,6 +467,7 @@ export default function InspectPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [insp, setInsp] = useState<Inspection | null>(null);
+  const [loadFailed, setLoadFailed] = useState<{ gone: boolean } | null>(null);
   const [moveInNames, setMoveInNames] = useState<string[]>([]);
   const [active, setActive] = useState<string>("");
   const [custom, setCustom] = useState("");
@@ -478,9 +482,10 @@ export default function InspectPage() {
     try {
       const data = await api<Inspection>(`/api/inspections/${id}`);
       setInsp(data);
+      setLoadFailed(null);
       return data;
     } catch (e) {
-      setError((e as Error).message);
+      setLoadFailed({ gone: isGone(e) });
       return null;
     }
   }, [id]);
@@ -537,7 +542,13 @@ export default function InspectPage() {
     return (
       <>
         <Topbar />
-        <main className="wrap">{error ? <p className="error">{error}</p> : <p className="loading">Opening record…</p>}</main>
+        {loadFailed ? (
+          <Missing gone={loadFailed.gone} />
+        ) : (
+          <main className="wrap">
+            <p className="loading">Opening record…</p>
+          </main>
+        )}
       </>
     );
   }
@@ -600,7 +611,7 @@ export default function InspectPage() {
             <div>
               <h1 style={{ fontSize: "clamp(32px, 5vw, 52px)" }}>{isOut ? "Move-out record" : "Move-in record"}</h1>
               <p className="muted" style={{ marginTop: 8, marginBottom: 0 }}>
-                {p?.address}, {p?.city}
+                {[p?.address, p?.city].filter(Boolean).join(", ")}
               </p>
             </div>
             {locked ? <Stamp main="Final" sub={fmtDate(insp.locked_at)} tone="violet" size="sm" rotate={6} /> : null}

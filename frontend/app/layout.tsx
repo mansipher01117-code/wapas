@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { ServerStatus } from "@/components/ServerStatus";
 import { InkFilters } from "@/components/Stamp";
 import "@fontsource-variable/anybody/wdth.css";
 import "@fontsource/hind/400.css";
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <InkFilters />
         {children}
+        <ServerStatus />
       </body>
     </html>
   );

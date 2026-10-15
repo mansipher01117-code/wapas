@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { Stamp } from "@/components/Stamp";
 import { Topbar } from "@/components/Topbar";
-import { api, fmtDate, uploadFile, type VerifyResult } from "@/lib/api";
+import { api, fmtDate, signerName, uploadFile, type VerifyResult } from "@/lib/api";
 
 export default function VerifyPage() {
   const [result, setResult] = useState<VerifyResult | null>(null);
@@ -122,7 +122,7 @@ export default function VerifyPage() {
                       </p>
                       <p style={{ marginBottom: 0 }}>
                         {result.lock_type === "mutual" && result.signoff
-                          ? `Signed by ${result.signoff.signer_name} on ${fmtDate(result.locked_at, true)}.`
+                          ? `Signed by ${signerName(result.signoff.signer_name)} on ${fmtDate(result.locked_at, true)}.`
                           : result.lock_type === "tenant_only"
                             ? `Locked by the tenant on ${fmtDate(result.locked_at, true)}.`
                             : "Not signed by the landlord yet."}

@@ -1,8 +1,26 @@
 # Wapas: deposit wapas, bina jhagde ke
 
-Wapas is an AI move-in/move-out witness for Indian tenants. You record each room on move-in day, your landlord signs the report on WhatsApp, and at move-out AI stamps every issue as **pre-existing, worsened, new or fixed** with a fair repair cost.
+**What Wapas does, in three lines:**
+
+1. On move-in day you record each room on your phone, saying what you see; every video is fingerprinted with SHA-256 the moment it lands.
+2. Your landlord opens one link, reads the condition report and taps Agree, which locks the record.
+3. At move-out you record the same rooms, and Wapas stamps every issue **pre-existing, worsened, new or fixed** and prices only what is fair to deduct.
 
 Built by team **0xalgos** for the Next Founders Hackathon (Devpost), 2026.
+
+## Live URLs
+
+| What | URL |
+| --- | --- |
+| Frontend (Vercel) | `TODO: paste the Vercel URL` |
+| Backend API (Render) | `TODO: paste the Render URL` |
+| API docs | `TODO: <backend URL>/docs` |
+| Demo video | `TODO: paste the Devpost/YouTube link` |
+
+> The hosted backend runs on a free plan: it sleeps when idle, takes up to a minute to wake on the
+> first request, and clears its data when it restarts. The app handles both: a banner says
+> "Waking up the server…" and retries, and any page whose record has been wiped offers
+> **Load sample inspection** instead of an error.
 
 ## What works in this MVP
 
@@ -24,6 +42,9 @@ Built by team **0xalgos** for the Next Founders Hackathon (Devpost), 2026.
 You need **Python 3.10+** and **Node.js 20.9+**. ffmpeg comes with the Python packages, so you don't install it separately.
 
 **Easy way:** double-click `run-backend.bat`, then `run-frontend.bat`, and open http://localhost:3000
+
+The backend serves http://localhost:8000 (docs at `/docs`), the frontend http://localhost:3000, and
+Next.js proxies `/api` and `/media` to the backend, so no frontend configuration is needed locally.
 
 **Manual way (two terminals):**
 
@@ -47,17 +68,48 @@ Open **http://localhost:3000**.
 
 > OneDrive tip: if `npm install` or Next.js shows `EPERM` / file-lock errors inside the OneDrive Desktop folder, pause OneDrive sync while you work, or move the project to `C:\dev\wapas`.
 
+## Environment variables
+
+Names only: put the values in `backend/.env` (copy `backend/.env.example`) and in your host's
+dashboard. Never commit a filled `.env`.
+
+**Backend** (`backend/.env`, read by `backend/app/config.py`)
+
+| Name | Needed | What it is for |
+| --- | --- | --- |
+| `GEMINI_API_KEY` | for real AI | Vision analysis of the frames. Empty means demo mode. |
+| `GEMINI_MODEL` | optional | Which Gemini model to call. |
+| `GROQ_API_KEY` | optional | Whisper transcription of the Hinglish voice notes. |
+| `WHISPER_MODEL` | optional | Which Whisper model to call. |
+| `FORCE_DEMO` | optional | `1` keeps demo mode even when keys exist. |
+| `DB_PATH` | on a host | Where the SQLite file lives (put it on a disk that survives restarts). |
+| `STORAGE_DIR` | on a host | Where room videos and frames live. |
+| `PUBLIC_BASE_URL` | on a host | Public backend URL, so media links in the API are absolute. |
+| `FRAME_INTERVAL_SEC` | optional | Seconds between sampled frames. |
+| `MAX_FRAMES` | optional | Cap on frames per room video. |
+| `FRAME_WIDTH` | optional | Width each sampled frame is resized to. |
+
+**Frontend** (Vercel project settings)
+
+| Name | Needed | What it is for |
+| --- | --- | --- |
+| `NEXT_PUBLIC_API_URL` | on a host | Backend URL the browser uploads to directly. |
+| `BACKEND_URL` | on a host | Backend URL the Next.js proxy forwards `/api` and `/media` to. |
+
+**Cost logging:** not implemented yet, so there are no variables for it. When we add the
+per-inspection AI cost log, the names to reserve are `COST_LOG_ENABLED`, `COST_LOG_PATH`,
+`COST_PER_1K_INPUT_TOKENS` and `COST_PER_1K_OUTPUT_TOKENS`, documented here once the code reads them.
+
 ## Demo mode vs real AI
 
-Without keys the app runs in **demo mode**: the whole flow works, but issues are sample data, and a yellow strip says so. Add keys in `backend/.env` for real analysis:
+Without keys the app runs in **demo mode**: the whole flow works, but issues are sample data, and a
+yellow strip says so. Restart the backend after editing `.env`. For the hackathon video, **record
+with real keys**, because the demo must be real.
 
-```env
-GEMINI_API_KEY=your_key      # https://aistudio.google.com/apikey
-GEMINI_MODEL=gemini-3.8-flash # any Gemini Flash model your key can use
-GROQ_API_KEY=your_key        # https://console.groq.com/keys  (Hinglish voice notes)
-```
-
-Restart the backend after editing `.env`. For the hackathon video, **record with real keys**, because the demo must be real.
+There is also a one-click sample case (**Load sample inspection** on the dashboard, or
+`POST /api/demo/sample`): it builds one clearly-marked sample property with a finished verdict, needs
+no video and no AI call, and is safe to click repeatedly. Use it when the hosted database has been
+wiped by a restart.
 
 ## Use it from your phone (same Wi-Fi)
 
@@ -135,6 +187,10 @@ wapas/
 | GET, POST | `/api/sign/{token}` | Landlord view and decision |
 | POST | `/api/properties/{id}/compare` | Run move-in vs move-out |
 | GET | `/api/comparisons/{id}` | Verdicts, costs, counts |
+| POST | `/api/comparisons/{id}/share` | Create (or return) the read-only report link |
+| POST | `/api/comparisons/{id}/share/revoke` | Stop sharing that report |
+| GET | `/api/shared/{token}` | The report behind a share link, read-only |
+| POST | `/api/demo/sample` | Build the sample case, or return the existing one |
 | GET | `/api/verify/{sha256}` and POST `/api/verify` | Tamper check by hash or file |
 
 ## Before the pitch
