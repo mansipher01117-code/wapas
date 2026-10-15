@@ -18,7 +18,8 @@ Built by team **0xalgos** for the Next Founders Hackathon (Devpost), 2026.
 | Demo video | `TODO: paste the Devpost/YouTube link` |
 
 > The hosted backend runs on a free plan: it sleeps when idle, takes up to a minute to wake on the
-> first request, and clears its data when it restarts. The app handles both: a banner says
+> first request, and clears its data when it restarts unless a disk is mounted (see
+> "Persistent storage on Render"). The app handles both: a banner says
 > "Waking up the server…" and retries, and any page whose record has been wiped offers
 > **Load sample inspection** instead of an error.
 
@@ -82,8 +83,10 @@ dashboard. Never commit a filled `.env`.
 | `GROQ_API_KEY` | optional | Whisper transcription of the Hinglish voice notes. |
 | `WHISPER_MODEL` | optional | Which Whisper model to call. |
 | `FORCE_DEMO` | optional | `1` keeps demo mode even when keys exist. |
-| `DB_PATH` | on a host | Where the SQLite file lives (put it on a disk that survives restarts). |
-| `STORAGE_DIR` | on a host | Where room videos and frames live. |
+| `DATA_DIR` | on a host | One folder for everything written: the database, room videos and frames. Point it at a mounted disk. Unset means the usual local paths. |
+| `DB_PATH` | optional | Overrides just the database location (defaults to `DATA_DIR`). |
+| `STORAGE_DIR` | optional | Overrides just the videos and frames location (defaults to `DATA_DIR`). |
+| `ADMIN_TOKEN` | optional | Turns on `GET /api/admin/backup`. Unset means that endpoint answers 404. |
 | `PUBLIC_BASE_URL` | on a host | Public backend URL, so media links in the API are absolute. |
 | `FRAME_INTERVAL_SEC` | optional | Seconds between sampled frames. |
 | `MAX_FRAMES` | optional | Cap on frames per room video. |
@@ -119,6 +122,33 @@ wiped by a restart.
 4. If Windows asks about the firewall for Node.js, allow it on private networks.
 
 The phone only talks to Next.js. Next.js forwards `/api` and `/media` to FastAPI (`frontend/next.config.ts`).
+
+## Persistent storage on Render
+
+Render's free instances restart with an empty filesystem, so without a disk every property, video
+and verdict disappears. One folder (`DATA_DIR`) holds all of it, so mounting a disk is enough:
+
+1. In the Render dashboard open the backend service, go to **Disks**, and **Add Disk** (any size; 1 GB
+   is plenty for a demo).
+2. Set its **Mount Path** to `/var/data`.
+3. In **Environment**, add `DATA_DIR=/var/data`.
+4. In **Environment**, add `ADMIN_TOKEN` with a long random secret of your own, so you can pull
+   backups.
+5. Redeploy. The startup log prints the resolved data folder and whether it is writable, and
+   `GET /api/health` reports `"storage": {"data_dir_configured": true, "writable": true}`.
+
+The database lands at `/var/data/wapas.db` and the room videos and their frames under
+`/var/data/storage/`. Nothing is copied or deleted for you: if a service already has data in the old
+location, the log warns that it is being bypassed, and you move it across yourself.
+
+**Download a backup** (database only, never videos and never `.env`):
+
+```bash
+curl -H "X-Admin-Token: $ADMIN_TOKEN" https://<backend-url>/api/admin/backup -o wapas-backup.db
+```
+
+The snapshot is taken through SQLite's backup API, so it is consistent even while the app is serving
+requests, and you can open it locally with any SQLite tool.
 
 ## Deploy (Railway backend + Vercel frontend)
 
@@ -191,6 +221,7 @@ wapas/
 | POST | `/api/comparisons/{id}/share/revoke` | Stop sharing that report |
 | GET | `/api/shared/{token}` | The report behind a share link, read-only |
 | POST | `/api/demo/sample` | Build the sample case, or return the existing one |
+| GET | `/api/admin/backup` | Download a database snapshot (needs the `X-Admin-Token` header) |
 | GET | `/api/verify/{sha256}` and POST `/api/verify` | Tamper check by hash or file |
 
 ## Before the pitch
